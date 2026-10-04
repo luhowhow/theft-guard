@@ -3,3 +3,6 @@ camera
 
 *.mp4
 *.onnx
+track
+detect
+model_test
