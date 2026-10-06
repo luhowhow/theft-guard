@@ -1,10 +1,15 @@
-// Step 10: track people and check dwell time in multiple alert zones.
+// Step 11: behavior-based alerts.
+//
+// States:
+//   OK    (green)  : not in any zone
+//   WATCH (yellow) : stayed in a zone longer than dwell_watch
+//   ALERT (red)    : WATCH + at least behavior_sec of crouching or vigorous motion
 //
 // Usage:
-//   ./track                          # webcam, alert after 5 s, zones.yml
+//   ./track                          # webcam, zones.yml
 //   ./track test.mp4                 # video file
-//   ./track test.mp4 10              # alert after 10 s
-//   ./track test.mp4 10 cam1.yml     # use a specific zone file (one per camera)
+//   ./track test.mp4 5               # WATCH after 5 s in a zone
+//   ./track test.mp4 5 cam1.yml      # use a specific zone file (one per camera)
 //
 // Controls:
 //   Left click : add a vertex to the zone being drawn
@@ -14,25 +19,37 @@
 //   c          : clear all zones
 //   q          : quit
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include "behavior.hpp"
 #include "detector.hpp"
 #include "tracker.hpp"
 #include "zones.hpp"
 
+// All tunable thresholds in one place.
+struct Rules {
+    double dwell_watch = 5.0;    // seconds in a zone before WATCH
+    double behavior_sec = 2.0;   // accumulated suspicious-behavior seconds needed for ALERT
+    float crouch_ratio = 0.75f;  // box height below 75% of usual height = crouching
+    float motion_thresh = 0.15f; // fraction of zone pixels changing = vigorous motion
+};
+
 int main(int argc, char** argv) {
     std::string source    = (argc >= 2) ? argv[1] : "0";
-    double dwell_limit    = (argc >= 3) ? std::stod(argv[2]) : 5.0;
+    Rules rules;
+    if (argc >= 3) rules.dwell_watch = std::stod(argv[2]);
     std::string zone_file = (argc >= 4) ? argv[3] : "zones.yml";
     bool is_file = (source != "0");
 
     Detector detector("models/yolox_tiny.onnx", 416);
     Tracker tracker;
     ZoneEditor editor;
+    MotionMeter motion_meter;
 
     cv::VideoCapture cap;
     if (is_file) cap.open(source);
@@ -72,62 +89,99 @@ int main(int argc, char** argv) {
         std::vector<Detection> dets = detector.detect(frame);
         std::vector<Track>& tracks = tracker.update(dets, now);
 
+        // Motion inside each zone (computed before drawing anything on the frame).
+        std::vector<float> zone_motion = motion_meter.update(frame, editor.zones);
+
         std::vector<bool> zone_alert(editor.zones.size(), false);
         bool any_alert = false;
 
         for (Track& tr : tracks) {
             if (tr.last_seen != now) continue;  // not detected in this frame, skip
 
-            // A zone may have been deleted while this person was inside it.
-            if (tr.zone_id >= (int)editor.zones.size()) {
-                tr.zone_id = -1;
-                tr.alerted = false;
-            }
+            // Time since this track was last updated (capped to avoid big jumps).
+            double dt = (tr.prev_t >= 0) ? std::min(now - tr.prev_t, 0.5) : 0.0;
+            tr.prev_t = now;
 
-            // Use the foot point (bottom-center of the box) to decide the position.
+            // A zone may have been deleted while this person was inside it.
+            if (tr.zone_id >= (int)editor.zones.size()) tr.zone_id = -1;
+
+            // --- Zone state (foot point = bottom-center of the box) ---
             cv::Point foot(tr.box.x + tr.box.width / 2, tr.box.y + tr.box.height);
             int z = which_zone(editor.zones, foot);
 
+            bool reset = false;
             if (z >= 0) {
                 if (tr.zone_id != z) {          // entered a zone (or moved to another one)
                     tr.zone_id = z;
                     tr.zone_enter = now;
-                    tr.alerted = false;
+                    reset = true;
                 }
                 tr.last_in_zone = now;
             } else if (tr.zone_id >= 0 && now - tr.last_in_zone > 1.0) {
-                tr.zone_id = -1;                // out of the zone for over 1 second: reset
+                tr.zone_id = -1;                // out of the zone for over 1 second
+                reset = true;
+            }
+            if (reset) {
                 tr.alerted = false;
+                tr.crouch_sec = 0;
+                tr.motion_sec = 0;
             }
 
-            double dwell = (tr.zone_id >= 0) ? now - tr.zone_enter : 0;
+            // --- Behavior cues ---
+            bool crouching = update_crouch(tr, dt, rules.crouch_ratio);
+            bool vigorous = tr.zone_id >= 0 && zone_motion[tr.zone_id] >= rules.motion_thresh;
+            if (tr.zone_id >= 0) {
+                if (crouching) tr.crouch_sec += dt;
+                if (vigorous) tr.motion_sec += dt;
+            }
 
-            // Color: green = normal, yellow = in a zone, red = stayed too long
-            cv::Scalar color(0, 255, 0);
-            if (tr.zone_id >= 0) color = cv::Scalar(0, 255, 255);
-            if (tr.zone_id >= 0 && dwell >= dwell_limit) {
-                color = cv::Scalar(0, 0, 255);
+            // --- Decide state ---
+            double dwell = (tr.zone_id >= 0) ? now - tr.zone_enter : 0;
+            bool watch = tr.zone_id >= 0 && dwell >= rules.dwell_watch;
+            bool alert = watch && (tr.crouch_sec >= rules.behavior_sec ||
+                                   tr.motion_sec >= rules.behavior_sec);
+
+            cv::Scalar color(0, 255, 0);                    // OK: green
+            if (tr.zone_id >= 0) color = cv::Scalar(0, 200, 200);  // in zone: dim yellow
+            if (watch) color = cv::Scalar(0, 255, 255);      // WATCH: yellow
+            if (alert) {
+                color = cv::Scalar(0, 0, 255);               // ALERT: red
                 zone_alert[tr.zone_id] = true;
                 any_alert = true;
                 if (!tr.alerted) {
-                    std::printf("[ALERT] t=%.1fs  ID %d stayed at %s for %.1f s\n",
-                                now, tr.id, editor.zones[tr.zone_id].name.c_str(), dwell);
+                    const char* reason = (tr.crouch_sec >= rules.behavior_sec) ? "crouching"
+                                                                               : "vigorous motion";
+                    std::printf("[ALERT] t=%.1fs  ID %d at %s  dwell %.1fs  reason: %s\n",
+                                now, tr.id, editor.zones[tr.zone_id].name.c_str(), dwell, reason);
                     tr.alerted = true;
                 }
             }
 
+            // --- Draw ---
             cv::rectangle(frame, tr.box, color, 2);
             cv::circle(frame, foot, 5, color, -1);
-            char label[64];
+            char label[96];
             if (tr.zone_id >= 0)
-                std::snprintf(label, sizeof(label), "ID %d  %.1fs", tr.id, dwell);
+                std::snprintf(label, sizeof(label), "ID %d %.1fs C%.1f M%.1f%s",
+                              tr.id, dwell, tr.crouch_sec, tr.motion_sec,
+                              crouching ? " [crouch]" : "");
             else
-                std::snprintf(label, sizeof(label), "ID %d", tr.id);
+                std::snprintf(label, sizeof(label), "ID %d%s", tr.id, crouching ? " [crouch]" : "");
             cv::putText(frame, label, tr.box.tl() + cv::Point(0, -6),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.7, color, 2);
+                        cv::FONT_HERSHEY_SIMPLEX, 0.6, color, 2);
         }
 
         draw_zones(frame, editor, zone_alert);
+
+        // Show each zone's motion level so thresholds can be tuned.
+        for (size_t i = 0; i < editor.zones.size(); ++i) {
+            char m[32];
+            std::snprintf(m, sizeof(m), "motion %.0f%%", zone_motion[i] * 100);
+            cv::Scalar mc = zone_motion[i] >= rules.motion_thresh ? cv::Scalar(0, 0, 255)
+                                                                  : cv::Scalar(255, 255, 0);
+            cv::putText(frame, m, editor.zones[i].points[0] + cv::Point(5, 50),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.6, mc, 2);
+        }
 
         if (any_alert) {
             cv::putText(frame, "ALERT", cv::Point(frame.cols - 200, 50),

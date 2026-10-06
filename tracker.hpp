@@ -14,10 +14,18 @@ struct Track {
     int id;                    // track ID of this person
     cv::Rect box;              // current position
     double last_seen;          // last time this person was detected (seconds)
+
+    // Zone state
     int zone_id = -1;          // index of the zone this person is in, -1 = none
     double zone_enter = -1;    // time of entering that zone
     double last_in_zone = -1;  // last time this person was inside that zone
     bool alerted = false;      // whether an alert has been raised for this stay
+
+    // Behavior state
+    double prev_t = -1;        // time of the previous behavior update
+    float ref_height = 0;      // usual (standing) box height, used to detect crouching
+    double crouch_sec = 0;     // accumulated crouching time during this stay
+    double motion_sec = 0;     // accumulated vigorous-motion time during this stay
 };
 
 // IoU = intersection area / union area. 0 = no overlap, 1 = identical boxes.
