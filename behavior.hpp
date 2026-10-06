@@ -1,7 +1,9 @@
 #pragma once
 // Behavior cues that need no extra model:
-//   1. MotionMeter: how much each zone changes between consecutive frames
-//      (vigorous actions such as prying or cutting cause large, sustained change).
+//   1. MotionMeter: how much the area of (person box ∩ zone) changes between frames.
+//      Vigorous actions such as prying or cutting cause large, sustained change.
+//      Measuring inside the person's own box makes the ratio relative to the person,
+//      so it depends less on how large the zone is drawn or how far the camera is.
 //   2. update_crouch: whether a person's box is much shorter than their usual height.
 
 #include <algorithm>
@@ -12,45 +14,62 @@
 
 class MotionMeter {
 public:
-    // Returns, for each zone, the fraction (0..1) of its pixels that changed
-    // since the previous call.
-    std::vector<float> update(const cv::Mat& frame, const std::vector<Zone>& zones) {
+    // Call once per frame, before motion_in().
+    void update(const cv::Mat& frame, const std::vector<Zone>& zones) {
         // Work on a half-size, blurred grayscale image: cheaper and less noisy.
         cv::Mat small, gray;
         cv::resize(frame, small, cv::Size(), scale_, scale_);
         cv::cvtColor(small, gray, cv::COLOR_BGR2GRAY);
         cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
 
-        std::vector<float> result(zones.size(), 0.f);
+        // Pixels whose brightness changed by more than pixel_thresh_ are marked 255.
         if (!prev_.empty() && prev_.size() == gray.size()) {
-            // Pixels whose brightness changed by more than pixel_thresh_ count as "changed".
-            cv::Mat diff;
-            cv::absdiff(gray, prev_, diff);
-            cv::threshold(diff, diff, pixel_thresh_, 255, cv::THRESH_BINARY);
-
-            for (size_t i = 0; i < zones.size(); ++i) {
-                // Build a mask of the zone at the reduced resolution.
-                std::vector<cv::Point> pts;
-                for (const auto& p : zones[i].points)
-                    pts.emplace_back(cvRound(p.x * scale_), cvRound(p.y * scale_));
-                cv::Mat mask = cv::Mat::zeros(gray.size(), CV_8U);
-                cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(255));
-
-                int area = cv::countNonZero(mask);
-                if (area == 0) continue;
-                cv::Mat changed;
-                cv::bitwise_and(diff, mask, changed);
-                result[i] = (float)cv::countNonZero(changed) / area;
-            }
+            cv::absdiff(gray, prev_, diff_);
+            cv::threshold(diff_, diff_, pixel_thresh_, 255, cv::THRESH_BINARY);
+        } else {
+            diff_ = cv::Mat::zeros(gray.size(), CV_8U);  // first frame: no change yet
         }
         prev_ = gray;
-        return result;
+
+        // One mask per zone, at the reduced resolution.
+        masks_.clear();
+        for (const auto& z : zones) {
+            std::vector<cv::Point> pts;
+            for (const auto& p : z.points)
+                pts.emplace_back(cvRound(p.x * scale_), cvRound(p.y * scale_));
+            cv::Mat mask = cv::Mat::zeros(gray.size(), CV_8U);
+            cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(255));
+            masks_.push_back(mask);
+        }
+    }
+
+    // Fraction (0..1) of changed pixels inside (person box ∩ zone).
+    // Returns 0 if the overlap is too small to be meaningful.
+    float motion_in(const cv::Rect& box, int zone) const {
+        if (zone < 0 || zone >= (int)masks_.size() || diff_.empty()) return 0.f;
+
+        // Scale the box to the reduced resolution and clip it to the image.
+        cv::Rect r(cvRound(box.x * scale_), cvRound(box.y * scale_),
+                   cvRound(box.width * scale_), cvRound(box.height * scale_));
+        r &= cv::Rect(0, 0, diff_.cols, diff_.rows);
+        if (r.area() == 0) return 0.f;
+
+        cv::Mat region = masks_[zone](r);       // part of the box that is inside the zone
+        int area = cv::countNonZero(region);
+        if (area < min_area_) return 0.f;
+
+        cv::Mat changed;
+        cv::bitwise_and(diff_(r), region, changed);
+        return (float)cv::countNonZero(changed) / area;
     }
 
 private:
     cv::Mat prev_;               // previous grayscale frame
+    cv::Mat diff_;               // changed-pixel mask of the latest frame
+    std::vector<cv::Mat> masks_; // zone masks
     double scale_ = 0.5;         // downscale factor before comparing
     double pixel_thresh_ = 25;   // brightness change (0..255) to count a pixel as changed
+    int min_area_ = 200;         // minimum overlap (in reduced pixels) to measure motion
 };
 
 // Update the person's reference (standing) height and report whether they are crouching.

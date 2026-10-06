@@ -1,9 +1,10 @@
-// Step 11: behavior-based alerts.
+// Step 13: behavior-based alerts; motion is measured inside (person box ∩ zone).
 //
 // States:
 //   OK    (green)  : not in any zone
 //   WATCH (yellow) : stayed in a zone longer than dwell_watch
 //   ALERT (red)    : WATCH + at least behavior_sec of crouching or vigorous motion
+//                    -> plays sounds/alert.wav and saves a record under events/
 //
 // Usage:
 //   ./track                          # webcam, zones.yml
@@ -26,6 +27,7 @@
 #include <string>
 #include <vector>
 #include <opencv2/opencv.hpp>
+#include "alert.hpp"
 #include "behavior.hpp"
 #include "detector.hpp"
 #include "tracker.hpp"
@@ -36,7 +38,7 @@ struct Rules {
     double dwell_watch = 5.0;    // seconds in a zone before WATCH
     double behavior_sec = 2.0;   // accumulated suspicious-behavior seconds needed for ALERT
     float crouch_ratio = 0.75f;  // box height below 75% of usual height = crouching
-    float motion_thresh = 0.15f; // fraction of zone pixels changing = vigorous motion
+    float motion_thresh = 0.30f; // fraction of (person box ∩ zone) pixels changing = vigorous motion
 };
 
 int main(int argc, char** argv) {
@@ -50,6 +52,7 @@ int main(int argc, char** argv) {
     Tracker tracker;
     ZoneEditor editor;
     MotionMeter motion_meter;
+    AlertAction alert_action;
 
     cv::VideoCapture cap;
     if (is_file) cap.open(source);
@@ -68,6 +71,7 @@ int main(int argc, char** argv) {
 
     while (cap.read(frame) && !frame.empty()) {
         cv::Size frame_size(frame.cols, frame.rows);
+        cv::Mat raw = frame.clone();  // untouched copy for evidence (we draw on `frame`)
 
         // Load saved zones on the first frame (we need the frame size first).
         if (first) {
@@ -89,11 +93,12 @@ int main(int argc, char** argv) {
         std::vector<Detection> dets = detector.detect(frame);
         std::vector<Track>& tracks = tracker.update(dets, now);
 
-        // Motion inside each zone (computed before drawing anything on the frame).
-        std::vector<float> zone_motion = motion_meter.update(frame, editor.zones);
+        // Frame difference and zone masks (computed before drawing anything on the frame).
+        motion_meter.update(frame, editor.zones);
 
         std::vector<bool> zone_alert(editor.zones.size(), false);
         bool any_alert = false;
+        std::vector<AlertEvent> new_events;  // alerts that fired in this frame
 
         for (Track& tr : tracks) {
             if (tr.last_seen != now) continue;  // not detected in this frame, skip
@@ -129,7 +134,8 @@ int main(int argc, char** argv) {
 
             // --- Behavior cues ---
             bool crouching = update_crouch(tr, dt, rules.crouch_ratio);
-            bool vigorous = tr.zone_id >= 0 && zone_motion[tr.zone_id] >= rules.motion_thresh;
+            float person_motion = (tr.zone_id >= 0) ? motion_meter.motion_in(tr.box, tr.zone_id) : 0.f;
+            bool vigorous = person_motion >= rules.motion_thresh;
             if (tr.zone_id >= 0) {
                 if (crouching) tr.crouch_sec += dt;
                 if (vigorous) tr.motion_sec += dt;
@@ -153,6 +159,7 @@ int main(int argc, char** argv) {
                                                                                : "vigorous motion";
                     std::printf("[ALERT] t=%.1fs  ID %d at %s  dwell %.1fs  reason: %s\n",
                                 now, tr.id, editor.zones[tr.zone_id].name.c_str(), dwell, reason);
+                    new_events.push_back({tr.id, editor.zones[tr.zone_id].name, reason, now, dwell});
                     tr.alerted = true;
                 }
             }
@@ -162,9 +169,9 @@ int main(int argc, char** argv) {
             cv::circle(frame, foot, 5, color, -1);
             char label[96];
             if (tr.zone_id >= 0)
-                std::snprintf(label, sizeof(label), "ID %d %.1fs C%.1f M%.1f%s",
+                std::snprintf(label, sizeof(label), "ID %d %.1fs C%.1f M%.1f (%.0f%%)%s",
                               tr.id, dwell, tr.crouch_sec, tr.motion_sec,
-                              crouching ? " [crouch]" : "");
+                              person_motion * 100, crouching ? " [crouch]" : "");
             else
                 std::snprintf(label, sizeof(label), "ID %d%s", tr.id, crouching ? " [crouch]" : "");
             cv::putText(frame, label, tr.box.tl() + cv::Point(0, -6),
@@ -172,16 +179,6 @@ int main(int argc, char** argv) {
         }
 
         draw_zones(frame, editor, zone_alert);
-
-        // Show each zone's motion level so thresholds can be tuned.
-        for (size_t i = 0; i < editor.zones.size(); ++i) {
-            char m[32];
-            std::snprintf(m, sizeof(m), "motion %.0f%%", zone_motion[i] * 100);
-            cv::Scalar mc = zone_motion[i] >= rules.motion_thresh ? cv::Scalar(0, 0, 255)
-                                                                  : cv::Scalar(255, 255, 0);
-            cv::putText(frame, m, editor.zones[i].points[0] + cv::Point(5, 50),
-                        cv::FONT_HERSHEY_SIMPLEX, 0.6, mc, 2);
-        }
 
         if (any_alert) {
             cv::putText(frame, "ALERT", cv::Point(frame.cols - 200, 50),
@@ -196,6 +193,12 @@ int main(int argc, char** argv) {
         cv::putText(frame, "L-click: add point  Enter: finish  R-click: delete  s: save  c: clear",
                     cv::Point(10, frame.rows - 15),
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+
+        // Fire alert actions after drawing, so annotated.jpg includes boxes and zones.
+        for (const AlertEvent& ev : new_events) {
+            std::string dir = alert_action.fire(ev, raw, frame);
+            std::printf("        event saved to %s\n", dir.c_str());
+        }
 
         cv::imshow("track", frame);
         int key = cv::waitKey(1);
