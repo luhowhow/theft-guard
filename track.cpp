@@ -1,10 +1,10 @@
-// Step 13: behavior-based alerts; motion is measured inside (person box ∩ zone).
+// Step 14: behavior-based alerts; one photo per second until the person leaves.
 //
 // States:
 //   OK    (green)  : not in any zone
 //   WATCH (yellow) : stayed in a zone longer than dwell_watch
 //   ALERT (red)    : WATCH + at least behavior_sec of crouching or vigorous motion
-//                    -> plays sounds/alert.wav and saves a record under events/
+//                    -> plays sounds/alert.wav and records photos under events/
 //
 // Usage:
 //   ./track                          # webcam, zones.yml
@@ -68,6 +68,7 @@ int main(int argc, char** argv) {
     auto start = std::chrono::steady_clock::now();
     cv::Mat frame;
     bool first = true;
+    double last_now = 0;  // time of the latest frame, used to close events at exit
 
     while (cap.read(frame) && !frame.empty()) {
         cv::Size frame_size(frame.cols, frame.rows);
@@ -89,6 +90,7 @@ int main(int argc, char** argv) {
         double now = is_file
             ? cap.get(cv::CAP_PROP_POS_MSEC) / 1000.0
             : std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+        last_now = now;
 
         std::vector<Detection> dets = detector.detect(frame);
         std::vector<Track>& tracks = tracker.update(dets, now);
@@ -194,11 +196,20 @@ int main(int argc, char** argv) {
                     cv::Point(10, frame.rows - 15),
                     cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
 
-        // Fire alert actions after drawing, so annotated.jpg includes boxes and zones.
-        for (const AlertEvent& ev : new_events) {
-            std::string dir = alert_action.fire(ev, raw, frame);
-            std::printf("        event saved to %s\n", dir.c_str());
+        // Alert actions run after drawing, so annotated photos include boxes and zones.
+        // 1. Start a new event for each alert that fired in this frame.
+        for (const AlertEvent& ev : new_events) alert_action.start(ev, raw, frame);
+
+        // 2. Keep taking photos (one per second) of everyone who is still alerting.
+        std::vector<int> alerting_ids;
+        for (const Track& tr : tracks) {
+            if (!tr.alerted || tr.zone_id < 0) continue;
+            alerting_ids.push_back(tr.id);
+            if (tr.last_seen == now) alert_action.tick(tr.id, now, raw, frame);
         }
+
+        // 3. Close events whose person left the zone or disappeared.
+        alert_action.finish_missing(alerting_ids, now);
 
         cv::imshow("track", frame);
         int key = cv::waitKey(1);
@@ -212,5 +223,7 @@ int main(int argc, char** argv) {
                 std::printf("Failed to save %s\n", zone_file.c_str());
         }
     }
+
+    alert_action.finish_all(last_now);  // close any events still open
     return 0;
 }
