@@ -10,3 +10,4 @@ events/
 events/
 .env
 bench_single
+bench_threads
