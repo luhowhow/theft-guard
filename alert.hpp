@@ -2,6 +2,8 @@
 // Actions taken when an ALERT fires:
 //   1. Play an on-site warning sound (non-blocking, with a cooldown).
 //   2. Record the event: one photo per second until the person leaves the zone.
+//   3. Notify the manager (scripts/notify.sh, Discord or Telegram): a photo when
+//      the event starts and a short message when it ends. Only these leave the store.
 //
 // Each event is saved to its own folder, e.g.
 //   events/20261006_143022_ID7/
@@ -61,6 +63,17 @@ public:
         capture(a, ev.stream_time, raw, annotated);
         write_json(a, false, ev.stream_time);
         std::printf("        event started: %s\n", a.dir.c_str());
+
+        char text[512];
+        std::snprintf(text, sizeof(text),
+                      "\xF0\x9F\x9A\xA8 ALERT at %s\n"   // UTF-8 for the siren emoji
+                      "Reason: %s\n"
+                      "Time: %s\n"
+                      "Person ID %d, %.1f s in zone\n"
+                      "Warning played on site. Recording one photo per second.",
+                      ev.zone.c_str(), ev.reason.c_str(),
+                      local_time("%Y-%m-%d %H:%M:%S").c_str(), ev.track_id, ev.dwell);
+        notify(text, a.dir + "/annotated/0001.jpg");
 
         active_[ev.track_id] = a;
     }
@@ -124,6 +137,36 @@ private:
         write_json(a, true, now);
         std::printf("        event finished: %s  (%d photos, %.1f s)\n",
                     a.dir.c_str(), a.count, now - a.info.stream_time);
+
+        char text[512];
+        std::snprintf(text, sizeof(text),
+                      "\xE2\x9C\x85 Event ended at %s\n"  // UTF-8 for the check-mark emoji
+                      "Person ID %d left after %.1f s\n"
+                      "%d photos saved locally: %s",
+                      a.info.zone.c_str(), a.info.track_id, now - a.info.stream_time,
+                      a.count, a.dir.c_str());
+        notify(text, "");
+    }
+
+    // Wrap a string in single quotes for the shell ('  ->  '\'').
+    static std::string shell_quote(const std::string& s) {
+        std::string out = "'";
+        for (char c : s) {
+            if (c == '\'') out += "'\\''";
+            else out += c;
+        }
+        return out + "'";
+    }
+
+    // Send a notification in the background so the video loop never waits
+    // for the network. photo may be empty for a text-only message.
+    void notify(const std::string& text, const std::string& photo) {
+        if (!std::filesystem::exists(notify_script_)) return;
+        std::string cmd = "bash " + shell_quote(notify_script_) + " " + shell_quote(text);
+        if (!photo.empty()) cmd += " " + shell_quote(photo);
+        cmd += " &";
+        int ret = std::system(cmd.c_str());
+        (void)ret;
     }
 
     void write_json(const Active& a, bool finished, double now) {
@@ -172,6 +215,7 @@ private:
 
     std::string sound_path_;
     std::string event_dir_;
+    std::string notify_script_ = "scripts/notify.sh";
     double interval_;
     int max_photos_;
     double cooldown_;

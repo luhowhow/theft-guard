@@ -8,3 +8,4 @@ detect
 model_test
 events/
 events/
+.env
