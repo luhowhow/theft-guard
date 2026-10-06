@@ -2,7 +2,8 @@
 // Simple IoU tracker: the more two boxes in consecutive frames overlap,
 // the more likely they belong to the same person.
 // Usage:
-//   Tracker tracker;
+//   Tracker tracker;                  // defaults: 30% overlap, drop after 1 s unseen
+//   Tracker tracker(0.3f, 2.0);       // drop after 2 s (for low per-camera frame rates)
 //   std::vector<Track>& tracks = tracker.update(detections, now_sec);
 
 #include <algorithm>
@@ -37,6 +38,9 @@ inline float iou(const cv::Rect& a, const cv::Rect& b) {
 
 class Tracker {
 public:
+    explicit Tracker(float iou_thresh = 0.3f, double max_missing_sec = 1.0)
+        : iou_thresh_(iou_thresh), max_missing_sec_(max_missing_sec) {}
+
     std::vector<Track>& update(const std::vector<Detection>& dets, double now) {
         // 1. Compute the overlap between every existing track and every new detection.
         struct Pair { float iou; int t; int d; };
@@ -73,6 +77,6 @@ public:
 private:
     std::vector<Track> tracks_;
     int next_id_ = 1;
-    float iou_thresh_ = 0.3f;        // need at least 30% overlap to be the same person
-    double max_missing_sec_ = 1.0;   // remove a track after 1 second without detection
+    float iou_thresh_;         // minimum overlap to be the same person
+    double max_missing_sec_;   // remove a track after this many seconds without detection
 };
