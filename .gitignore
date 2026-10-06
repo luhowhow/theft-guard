@@ -13,3 +13,4 @@ bench_single
 bench_threads
 bench_multi
 multi_view
+multi_detect
