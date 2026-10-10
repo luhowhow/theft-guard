@@ -27,6 +27,7 @@ struct Track {
     float ref_height = 0;      // usual (standing) box height, used to detect crouching
     double crouch_sec = 0;     // accumulated crouching time during this stay
     double motion_sec = 0;     // accumulated vigorous-motion time during this stay
+    cv::Rect last_box;         // box at the previous analyzed frame (for aligned motion)
 };
 
 // IoU = intersection area / union area. 0 = no overlap, 1 = identical boxes.

@@ -29,6 +29,8 @@ public:
         } else {
             diff_ = cv::Mat::zeros(gray.size(), CV_8U);  // first frame: no change yet
         }
+        last_ = prev_;  // previous frame, kept for aligned_motion()
+        cur_ = gray;
         prev_ = gray;
 
         // One mask per zone, at the reduced resolution.
@@ -41,6 +43,32 @@ public:
             cv::fillPoly(mask, std::vector<std::vector<cv::Point>>{pts}, cv::Scalar(255));
             masks_.push_back(mask);
         }
+    }
+
+    // Fraction (0..1) of changed pixels between the person's crop in the previous
+    // frame (at prev_box) and in the current frame (at box), restricted to the zone.
+    // Aligning the two crops cancels whole-body movement, so only limbs moving
+    // relative to the body are counted.
+    float aligned_motion(const cv::Rect& prev_box, const cv::Rect& box, int zone) const {
+        if (zone < 0 || zone >= (int)masks_.size() || last_.empty() || cur_.empty()) return 0.f;
+        auto scaled = [&](const cv::Rect& r) {
+            cv::Rect s(cvRound(r.x * scale_), cvRound(r.y * scale_),
+                       cvRound(r.width * scale_), cvRound(r.height * scale_));
+            return s & cv::Rect(0, 0, cur_.cols, cur_.rows);
+        };
+        cv::Rect a = scaled(prev_box), b = scaled(box);
+        if (a.area() < min_area_ || b.area() < min_area_) return 0.f;
+
+        cv::Mat region = masks_[zone](b);  // part of the current box inside the zone
+        int area = cv::countNonZero(region);
+        if (area < min_area_) return 0.f;
+
+        cv::Mat prev_crop, diff;
+        cv::resize(last_(a), prev_crop, b.size());
+        cv::absdiff(cur_(b), prev_crop, diff);
+        cv::threshold(diff, diff, pixel_thresh_, 255, cv::THRESH_BINARY);
+        cv::bitwise_and(diff, region, diff);
+        return (float)cv::countNonZero(diff) / area;
     }
 
     // Fraction (0..1) of changed pixels inside (person box ∩ zone).
@@ -65,6 +93,7 @@ public:
 
 private:
     cv::Mat prev_;               // previous grayscale frame
+    cv::Mat last_, cur_;         // previous and current frames, for aligned_motion()
     cv::Mat diff_;               // changed-pixel mask of the latest frame
     std::vector<cv::Mat> masks_; // zone masks
     double scale_ = 0.5;         // downscale factor before comparing
