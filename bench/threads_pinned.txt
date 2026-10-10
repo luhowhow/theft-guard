@@ -1,0 +1,11 @@
+# Pinned thread scaling, 2026-10-10 20:05
+# CPU: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz
+# Clip: data/clips/tool_attack_1.mp4, rest 60 s between runs
+# Topology (CPU,CORE): 0,0 1,1 2,2 3,3 4,0 5,1 6,2 7,3
+
+Config                     CPUs      Threads   Infer (ms)  Speedup   Avg MHz
+1 thread, 1 core           0               1       139.21    1.00x      3322
+2 threads, 2 cores         0,1             2       100.35    1.39x      2856
+2 threads, 1 core (HT)     0,4             2       120.42    1.16x      3221
+4 threads, 4 cores         0,1,2,3         4        85.72    1.62x      2245
+all threads                0,1,2,3,4,5,6,7       8        81.94    1.70x      2225
