@@ -24,7 +24,7 @@
 // All tunable thresholds in one place.
 struct Rules {
     double dwell_watch = 5.0;      // seconds in a zone before WATCH
-    double behavior_sec = 6.0;     // accumulated suspicious-behavior seconds needed for ALERT
+    double behavior_sec = 5.0;     // accumulated suspicious-behavior seconds needed for ALERT
     float crouch_ratio = 0.75f;    // box height below 75% of usual height = crouching
     float motion_thresh = 0.30f;   // fraction of (person box ∩ zone) pixels changing = vigorous motion
     double zone_exit_grace = 2.0;  // seconds outside a zone before the stay resets

@@ -118,3 +118,8 @@ CPU 只有 4 個實體核心，且全核心負載時降頻。策略改為「每�
 2. 對齊身體後，單張的動作量仍受偵測框抖動干擾，但攻擊時手部是「持續」動作，
    拉長累積時間（2 → 6 秒）即可濾掉斷續的晃動。
 3. 樣本數小（6 段攻擊），參數可能偏向這批影片；Stage II 需更多樣本並改用姿勢模型。
+
+### Final setting (2026-10-10)
+behavior_sec changed from 6.0 to 5.0.
+Result: 6 / 6 thefts caught (100%), 7 / 21 false alarms (33%).
+Reason: 6 s cut false alarms from 7 to 4 but missed one real attack.
