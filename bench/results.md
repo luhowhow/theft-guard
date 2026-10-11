@@ -109,7 +109,7 @@ CPU 只有 4 個實體核心，且全核心負載時降頻。策略改為「每�
 | 新影片，區域畫大後 | 原始像素差 | 動作 30%、累積 2 秒 | 6/6 | 16/21 |
 | 新影片 | 原始像素差 | 動作 40%、蹲下需搭配動作 | 4/6 | 7/21 |
 | 新影片 | 對齊身體 | 動作 30%、累積 2 秒 | 6/6 | 17/21 |
-| 新影片 | 對齊身體 | 動作 30%、累積 5 秒、蹲下需搭配動作 | 6/6 | 6/21 |
+| 新影片 | 對齊身體 | 動作 30%、累積 5 秒、蹲下需搭配動作 | 6/6 | 7/21 |
 | **採用** | **對齊身體** | **動作 30%、累積 6 秒、蹲下需搭配動作** | **5/6（83%）** | **4/21（19%）** |
 | 新影片 | 對齊身體 | 動作 40%、累積 6 秒 | 1/6 | 0/21 |
 
@@ -121,7 +121,7 @@ CPU 只有 4 個實體核心，且全核心負載時降頻。策略改為「每�
 
 ### Final setting (2026-10-10)
 behavior_sec changed from 6.0 to 5.0.
-Result: 6 / 6 thefts caught (100%), 6 / 21 false alarms (29%).
+Result: 6 / 6 thefts caught (100%), 7 / 21 false alarms (33%).
 Reason: 6 s cut false alarms from 7 to 4 but missed one real attack.
 
 ## Per-clip results (5 s rule)
@@ -159,37 +159,37 @@ Detection (5 analyzed frames per second of video):
 Rules: watch 5.0s, behavior 5.0s, crouch 0.75, crouch alone no, motion 30%
 
 video                  expect  result check  reason              maxC   maxM   max%
-crouch_long_1.mp4      no      ALERT  WRONG  crouching           11.4    3.0    52%
-crouch_long_2.mp4      no      ALERT  WRONG  crouching           24.4    4.2    48%
-crouch_long_3.mp4      no      ALERT  WRONG  crouching           19.8    2.8    54%
-crouch_short_1.mp4     no      WATCH  ok     -                    2.4    2.2    56%
-crouch_short_2.mp4     no      WATCH  ok     -                    3.4    3.2    57%
-crouch_short_3.mp4     no      WATCH  ok     -                    3.4    2.0    54%
-hand_attack_1.mp4      ALERT   ALERT  ok     vigorous motion      0.0    8.8    57%
-hand_attack_2.mp4      ALERT   ALERT  ok     vigorous motion      2.0    9.2    59%
-hand_attack_3.mp4      ALERT   ALERT  ok     vigorous motion      3.2    6.8    55%
-pass_1.mp4             no      OK     ok     -                    0.0    2.2    55%
-pass_2.mp4             no      OK     ok     -                    0.0    1.6    40%
-pass_3.mp4             no      OK     ok     -                    0.2    2.4    53%
-stay_long_1.mp4        no      WATCH  ok     -                    0.0    2.4    54%
-stay_long_2.mp4        no      WATCH  ok     -                    0.0    2.6    49%
-stay_long_3.mp4        no      WATCH  ok     -                    0.0    4.2    45%
-stay_short_1.mp4       no      WATCH  ok     -                    0.0    2.8    49%
-stay_short_2.mp4       no      WATCH  ok     -                    0.0    2.6    53%
-stay_short_3.mp4       no      WATCH  ok     -                    0.0    2.0    49%
-tool_attack_1.mp4      ALERT   ALERT  ok     vigorous motion      0.6   10.6    58%
-tool_attack_2.mp4      ALERT   ALERT  ok     vigorous motion      5.0   10.0    64%
-tool_attack_3.mp4      ALERT   ALERT  ok     vigorous motion      3.0    5.2    55%
-tool_pass_1.mp4        no      WATCH  ok     -                    0.0    2.6    61%
-tool_pass_2.mp4        no      OK     ok     -                    0.0    3.4    56%
-tool_pass_3.mp4        no      WATCH  ok     -                    0.0    2.2    60%
-tool_stay_1.mp4        no      ALERT  WRONG  vigorous motion      0.0    5.8    57%
-tool_stay_2.mp4        no      ALERT  WRONG  vigorous motion      0.0    9.2    56%
-tool_stay_3.mp4        no      ALERT  WRONG  vigorous motion      0.2    5.2    62%
+crouch_long_1.mp4      no      ALERT  WRONG  crouching           11.4    3.2    52%
+crouch_long_2.mp4      no      ALERT  WRONG  crouching           24.4    4.6    48%
+crouch_long_3.mp4      no      ALERT  WRONG  crouching           19.8    3.0    51%
+crouch_short_1.mp4     no      WATCH  ok     -                    2.4    2.6    58%
+crouch_short_2.mp4     no      WATCH  ok     -                    3.4    3.6    57%
+crouch_short_3.mp4     no      WATCH  ok     -                    3.4    2.4    56%
+hand_attack_1.mp4      ALERT   ALERT  ok     vigorous motion      0.0    8.8    58%
+hand_attack_2.mp4      ALERT   ALERT  ok     vigorous motion      2.0    9.2    57%
+hand_attack_3.mp4      ALERT   ALERT  ok     vigorous motion      3.2    7.2    55%
+pass_1.mp4             no      OK     ok     -                    0.0    2.6    55%
+pass_2.mp4             no      OK     ok     -                    0.0    2.0    40%
+pass_3.mp4             no      OK     ok     -                    0.2    4.0    52%
+stay_long_1.mp4        no      WATCH  ok     -                    0.0    2.6    51%
+stay_long_2.mp4        no      WATCH  ok     -                    0.0    3.0    49%
+stay_long_3.mp4        no      ALERT  WRONG  vigorous motion      0.0    5.2    52%
+stay_short_1.mp4       no      WATCH  ok     -                    0.0    3.4    49%
+stay_short_2.mp4       no      WATCH  ok     -                    0.0    3.0    53%
+stay_short_3.mp4       no      WATCH  ok     -                    0.0    2.4    50%
+tool_attack_1.mp4      ALERT   ALERT  ok     vigorous motion      0.6   10.8    58%
+tool_attack_2.mp4      ALERT   ALERT  ok     vigorous motion      5.0   11.0    64%
+tool_attack_3.mp4      ALERT   ALERT  ok     vigorous motion      3.0    5.6    55%
+tool_pass_1.mp4        no      WATCH  ok     -                    0.0    2.6    57%
+tool_pass_2.mp4        no      OK     ok     -                    0.0    3.6    56%
+tool_pass_3.mp4        no      WATCH  ok     -                    0.0    3.0    56%
+tool_stay_1.mp4        no      ALERT  WRONG  vigorous motion      0.0    6.0    57%
+tool_stay_2.mp4        no      ALERT  WRONG  vigorous motion      0.0    9.8    56%
+tool_stay_3.mp4        no      ALERT  WRONG  vigorous motion      0.2    5.4    62%
 
 Summary
   thefts caught (TP): 6 / 6   recall 100%
-  false alarms  (FP): 6 / 21   false alarm rate 29%
+  false alarms  (FP): 7 / 21   false alarm rate 33%
 
 Total time: 0.4 min
 ```

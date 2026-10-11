@@ -62,7 +62,7 @@ Test set: 27 self-recorded clips in 9 scenarios, 3 clips each, with the person a
 | --- | --- | --- | --- |
 | Raw pixel change, 2 s | 6 / 6 | 16 / 21 |
 | Body-aligned motion, 2 s | 6 / 6 | 17 / 21 |
-| **Body-aligned, 5 s (chosen)** | **6 / 6** | **6 / 21** |
+| **Body-aligned, 5 s (chosen)** | **6 / 6** | **7 / 21** |
 | Body-aligned, 6 s | 5 / 6 | 4 / 21 |
 
 Remaining false alarms are long crouches and customers handling a tool; a pose model is planned for Stage II. Per-clip results are in `bench/results.md`.
