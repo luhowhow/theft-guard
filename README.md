@@ -11,11 +11,11 @@ Entry for the ASUS UGen AI League, Lightning track (ASUS UGen300 USB accelerator
 
 ## How it decides
 
-| State | Condition | Action |
-| --- | --- | --- |
-| OK | Outside every alert zone, or just passing by | None |
-| WATCH | In an alert zone for 5 s or more | Highlight only; the customer is not disturbed |
-| ALERT | WATCH, plus either 5 s of sustained limb motion, or 5 s of crouching with at least 2.5 s of motion | Voice warning, one photo per second, Discord message |
+| State | Box | Condition | Action |
+| --- | --- | --- | --- |
+| OK | Green | Outside every alert zone, or just passing by | None |
+| WATCH | Yellow | In an alert zone for 5 s or more | Highlight only; the customer is not disturbed |
+| ALERT | Red | WATCH, plus either 5 s of sustained limb motion, or 5 s of crouching with at least 2.5 s of motion | Voice warning, one photo per second, Discord message |
 
 Alert zones are drawn with the mouse, any number per camera, and saved per camera (`cam1.yml`, `cam2.yml`, ...).
 
@@ -59,7 +59,7 @@ Test set: 27 self-recorded clips in 9 scenarios, 3 clips each, with the person a
 | Normal visits (21) | walk past, walk past carrying a tool, short stay, long stay, short crouch, long crouch, stay while handling a tool |
 
 | Version | Thefts caught | False alarms |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | Raw pixel change, 2 s | 6 / 6 | 16 / 21 |
 | Body-aligned motion, 2 s | 6 / 6 | 17 / 21 |
 | **Body-aligned, 5 s (chosen)** | **6 / 6** | **7 / 21** |
