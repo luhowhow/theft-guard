@@ -123,3 +123,73 @@ CPU 只有 4 個實體核心，且全核心負載時降頻。策略改為「每�
 behavior_sec changed from 6.0 to 5.0.
 Result: 6 / 6 thefts caught (100%), 7 / 21 false alarms (33%).
 Reason: 6 s cut false alarms from 7 to 4 but missed one real attack.
+
+## Per-clip results (5 s rule)
+
+```
+Detection (5 analyzed frames per second of video):
+  crouch_long_1.mp4       156 frames (cached)
+  crouch_long_2.mp4       206 frames (cached)
+  crouch_long_3.mp4       236 frames (cached)
+  crouch_short_1.mp4       61 frames (cached)
+  crouch_short_2.mp4       91 frames (cached)
+  crouch_short_3.mp4       76 frames (cached)
+  hand_attack_1.mp4        81 frames (cached)
+  hand_attack_2.mp4       106 frames (cached)
+  hand_attack_3.mp4       101 frames (cached)
+  pass_1.mp4               46 frames (cached)
+  pass_2.mp4               76 frames (cached)
+  pass_3.mp4               71 frames (cached)
+  stay_long_1.mp4         166 frames (cached)
+  stay_long_2.mp4         146 frames (cached)
+  stay_long_3.mp4         176 frames (cached)
+  stay_short_1.mp4         56 frames (cached)
+  stay_short_2.mp4         86 frames (cached)
+  stay_short_3.mp4         76 frames (cached)
+  tool_attack_1.mp4        96 frames (cached)
+  tool_attack_2.mp4       106 frames (cached)
+  tool_attack_3.mp4       101 frames (cached)
+  tool_pass_1.mp4          46 frames (cached)
+  tool_pass_2.mp4          71 frames (cached)
+  tool_pass_3.mp4          76 frames (cached)
+  tool_stay_1.mp4         121 frames (cached)
+  tool_stay_2.mp4         146 frames (cached)
+  tool_stay_3.mp4         171 frames (cached)
+
+Rules: watch 5.0s, behavior 5.0s, crouch 0.75, crouch alone no, motion 30%
+
+video                  expect  result check  reason              maxC   maxM   max%
+crouch_long_1.mp4      no      ALERT  WRONG  crouching           11.4    3.0    52%
+crouch_long_2.mp4      no      ALERT  WRONG  crouching           24.4    4.2    48%
+crouch_long_3.mp4      no      ALERT  WRONG  crouching           19.8    2.8    54%
+crouch_short_1.mp4     no      WATCH  ok     -                    2.4    2.2    56%
+crouch_short_2.mp4     no      WATCH  ok     -                    3.4    3.2    57%
+crouch_short_3.mp4     no      WATCH  ok     -                    3.4    2.0    54%
+hand_attack_1.mp4      ALERT   ALERT  ok     vigorous motion      0.0    8.8    57%
+hand_attack_2.mp4      ALERT   ALERT  ok     vigorous motion      2.0    9.2    59%
+hand_attack_3.mp4      ALERT   ALERT  ok     vigorous motion      3.2    6.8    55%
+pass_1.mp4             no      OK     ok     -                    0.0    2.2    55%
+pass_2.mp4             no      OK     ok     -                    0.0    1.6    40%
+pass_3.mp4             no      OK     ok     -                    0.2    2.4    53%
+stay_long_1.mp4        no      WATCH  ok     -                    0.0    2.4    54%
+stay_long_2.mp4        no      WATCH  ok     -                    0.0    2.6    49%
+stay_long_3.mp4        no      WATCH  ok     -                    0.0    4.2    45%
+stay_short_1.mp4       no      WATCH  ok     -                    0.0    2.8    49%
+stay_short_2.mp4       no      WATCH  ok     -                    0.0    2.6    53%
+stay_short_3.mp4       no      WATCH  ok     -                    0.0    2.0    49%
+tool_attack_1.mp4      ALERT   ALERT  ok     vigorous motion      0.6   10.6    58%
+tool_attack_2.mp4      ALERT   ALERT  ok     vigorous motion      5.0   10.0    64%
+tool_attack_3.mp4      ALERT   ALERT  ok     vigorous motion      3.0    5.2    55%
+tool_pass_1.mp4        no      WATCH  ok     -                    0.0    2.6    61%
+tool_pass_2.mp4        no      OK     ok     -                    0.0    3.4    56%
+tool_pass_3.mp4        no      WATCH  ok     -                    0.0    2.2    60%
+tool_stay_1.mp4        no      ALERT  WRONG  vigorous motion      0.0    5.8    57%
+tool_stay_2.mp4        no      ALERT  WRONG  vigorous motion      0.0    9.2    56%
+tool_stay_3.mp4        no      ALERT  WRONG  vigorous motion      0.2    5.2    62%
+
+Summary
+  thefts caught (TP): 6 / 6   recall 100%
+  false alarms  (FP): 6 / 21   false alarm rate 29%
+
+Total time: 0.4 min
+```
