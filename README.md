@@ -129,7 +129,7 @@ Video files are replayed at their real frame rate, so they behave like live came
 ## Evaluation and benchmarks
 
 ```bash
-# Test clips: download from the Google Drive link in Results into data/clips/
+# Test clips: mkdir -p data/clips, then download them there from the Google Drive link in Results
 
 # Current rules: per-clip table and summary
 ./build/eval data/clips/*.mp4
