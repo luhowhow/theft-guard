@@ -48,4 +48,4 @@ echo
 echo "Done. Environment:"
 bash scripts/env_info.sh
 echo
-echo "Run:  ./build/guard 0 test.mp4"
+echo "Run:  ./build/guard <video.mp4 | rtsp://... | 0> [more cameras...]"
