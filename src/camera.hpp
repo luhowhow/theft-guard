@@ -131,7 +131,7 @@ public:
             if (watch) saw_watch_ = true;
 
             cv::Scalar color(0, 255, 0);                           // OK: green
-            if (tr.zone_id >= 0) color = cv::Scalar(0, 200, 200);  // in zone: dim yellow
+            // in zone but before WATCH: stay green
             if (watch) color = cv::Scalar(0, 255, 255);             // WATCH: yellow
             if (alert) {
                 color = cv::Scalar(0, 0, 255);                      // ALERT: red
