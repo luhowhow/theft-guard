@@ -6,7 +6,7 @@ Theft Guard reads the store's existing camera streams, finds people, follows the
 
 Entry for the ASUS UGen AI League, Lightning track (ASUS UGen300 USB accelerator). Stage I runs on the CPU of a 2020 entry-level office laptop; Stage II moves inference onto the UGen300.
 
-- Demo video: [YouTube link]
+- Demo video: [youtu.be/Xn8eUOB-638](https://youtu.be/Xn8eUOB-638)
 - Slides: submitted with the Stage I proposal
 
 ## How it decides
