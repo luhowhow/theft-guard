@@ -51,7 +51,7 @@ Actions .................... speaker, photos, Discord
 
 ## Results
 
-Test set: 27 self-recorded clips in 9 scenarios, 3 clips each, with the person approaching from a different direction in each clip. Only the author appears in them; the clips are not included in this repository.
+Test set: 27 self-recorded clips in 9 scenarios, 3 clips each, with the person approaching from a different direction in each clip. Only the author appears in them. The clips are kept out of this repository because of their size; download them from [Google Drive](https://drive.google.com/drive/folders/1oWozBmZL94ZQawxkJkuCc-obxQqD7nR_?usp=sharing) into `data/clips/`.
 
 | Group | Scenarios (3 clips each) |
 | --- | --- |
@@ -129,6 +129,8 @@ Video files are replayed at their real frame rate, so they behave like live came
 ## Evaluation and benchmarks
 
 ```bash
+# Test clips: download from the Google Drive link in Results into data/clips/
+
 # Current rules: per-clip table and summary
 ./build/eval data/clips/*.mp4
 
